@@ -3,7 +3,7 @@ package com.furui;
 import com.furui.domain.Customer;
 import com.furui.domain.LineItem;
 import com.furui.domain.Orders;
-import com.furui.domain.RealTimeOrderRevenue;
+import com.furui.domain.RealTimeResult;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.state.BroadcastState;
 import org.apache.flink.api.common.state.MapState;
@@ -22,7 +22,13 @@ import org.apache.flink.streaming.api.functions.co.KeyedCoProcessFunction;
 import org.apache.flink.util.Collector;
 
 /**
- * Hello world!
+ * ./dbgen -s 5 -f
+ * cd /usr/local/opt/apache-flink@1/libexec/bin
+ * ./start-cluster.sh
+ * ./flink run -c com.furui.App /Users/free/Projects/flink-query-tpc-h/target/flink-query-tpc-h-1.0-SNAPSHOT.jar
+ *
+ * /usr/local/opt/apache-flink@1/libexec/conf
+ * ./stop-cluster.sh
  */
 public class App {
 
@@ -31,7 +37,7 @@ public class App {
 
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.setParallelism(6);
+        env.setParallelism(5);
         long start = System.currentTimeMillis();
         FileSource<String> customerFileSource = FileSource
                 .forRecordStreamFormat(
@@ -68,9 +74,9 @@ public class App {
         }).filter(c -> SEGMENT.equals(c.getC_mktsegment())); // 过滤目标市场细分
 
         MapStateDescriptor<Integer, Customer> customerStateDesc = new MapStateDescriptor<>(
-                "customerState",  // 状态名称
-                Types.INT,        // 键类型：客户ID（Integer）
-                Types.POJO(Customer.class)  // 值类型：Customer对象（POJO类型）
+                "customerState",
+                Types.INT,
+                Types.POJO(Customer.class)
         );
 
         BroadcastStream<Customer> broadcastCustomer = customerStream.broadcast(customerStateDesc);
@@ -125,10 +131,10 @@ public class App {
             return lineitem;
         }).filter(l -> DATE.compareTo(l.getL_shipdate()) < 0);
 
-        DataStream<RealTimeOrderRevenue> realTimeStream = filteredOrders
+        DataStream<RealTimeResult> realTimeStream = filteredOrders
                 .keyBy(Orders::getO_orderkey) // 按订单ID分组
                 .connect(lineitemStream.keyBy(LineItem::getL_orderkey))
-                .process(new KeyedCoProcessFunction<Integer, Orders, LineItem, RealTimeOrderRevenue>() {
+                .process(new KeyedCoProcessFunction<Integer, Orders, LineItem, RealTimeResult>() {
                     // 状态1：缓存订单基础信息（orderkey -> 订单信息）
                     private MapState<Integer, Orders> orderInfoState;
                     // 状态2：存储当前分组的累计收入（orderkey -> 累计值）
@@ -148,14 +154,13 @@ public class App {
                     }
 
                     @Override
-                    public void processElement1(Orders order, Context ctx, Collector<RealTimeOrderRevenue> out) throws Exception {
+                    public void processElement1(Orders order, Context ctx, Collector<RealTimeResult> out) throws Exception {
                         int orderkey = order.getO_orderkey();
                         orderInfoState.put(orderkey, order);
 
-                        // 若已有订单项先到达并累计了收入，此时补全订单属性并输出一次最新累计值
                         if (totalRevenueState.contains(orderkey)) {
                             double currentTotal = totalRevenueState.get(orderkey);
-                            out.collect(new RealTimeOrderRevenue(
+                            out.collect(new RealTimeResult(
                                     orderkey,
                                     order.getO_orderdate(),
                                     order.getO_shippriority(),
@@ -164,13 +169,14 @@ public class App {
                         }
                     }
 
-                    // 处理订单项流：实时更新累计值并立即输出
+
                     @Override
-                    public void processElement2(LineItem lineitem, Context ctx, Collector<RealTimeOrderRevenue> out) throws Exception {
+                    public void processElement2(LineItem lineitem, Context ctx, Collector<RealTimeResult> out) throws Exception {
                         int orderkey = lineitem.getL_orderkey();
 
                         // 1. 更新累计收入
                         double itemRevenue = lineitem.getL_extendedprice() * (1 - lineitem.getL_discount());
+
                         double currentTotal = totalRevenueState.get(orderkey) == null ? 0.0 : totalRevenueState.get(orderkey);
                         currentTotal += itemRevenue;
                         totalRevenueState.put(orderkey, currentTotal);
@@ -181,7 +187,7 @@ public class App {
                             String orderdate =  order.getO_orderdate();
                             int shippriority = order.getO_shippriority();
 
-                            out.collect(new RealTimeOrderRevenue(
+                            out.collect(new RealTimeResult(
                                     orderkey,
                                     orderdate,
                                     shippriority,

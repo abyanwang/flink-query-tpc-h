@@ -4,12 +4,13 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
 import java.util.Date;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class LineItem {
+public class LineItem implements Serializable {
     private int l_orderkey;
     private int l_linenumber;
     private int l_partkey;

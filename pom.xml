@@ -11,7 +11,7 @@
   <url>http://www.example.com</url>
 
   <properties>
-    <flink.version>1.18.1</flink.version> <!-- 稳定的 LTS 版本，兼容 Java 11+ -->
+    <flink.version>1.20.2</flink.version> <!-- 稳定的 LTS 版本，兼容 Java 11+ -->
     <scala.binary.version>2.12</scala.binary.version> <!-- Flink 1.18 依赖的 Scala 版本 -->
     <maven.compiler.source>17</maven.compiler.source> <!-- 与 Java 环境匹配 -->
     <maven.compiler.target>17</maven.compiler.target>
@@ -22,31 +22,31 @@
     <dependency>
       <groupId>org.apache.flink</groupId>
       <artifactId>flink-java</artifactId>
-      <version>1.18.1</version>
+      <version>${flink.version}</version>
     </dependency>
     <!-- Flink Table API -->
     <dependency>
       <groupId>org.apache.flink</groupId>
       <artifactId>flink-table-api-java-bridge</artifactId>
-      <version>1.18.1</version>
+      <version>${flink.version}</version>
     </dependency>
 
     <dependency>
       <groupId>org.apache.flink</groupId>
       <artifactId>flink-table-api-java-bridge</artifactId>
-      <version>1.18.1</version>
+      <version>${flink.version}</version>
     </dependency>
     <!-- Flink 文件连接器（读取DBGEN生成的.tbl文件） -->
     <dependency>
       <groupId>org.apache.flink</groupId>
       <artifactId>flink-connector-files</artifactId>
-      <version>1.18.1</version>
+      <version>${flink.version}</version>
     </dependency>
     <!-- Flink 执行器（本地测试用） -->
     <dependency>
       <groupId>org.apache.flink</groupId>
       <artifactId>flink-runtime-web</artifactId>
-      <version>1.18.1</version>
+      <version>${flink.version}</version>
       <scope>runtime</scope>
     </dependency>
 
