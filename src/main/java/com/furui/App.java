@@ -1,5 +1,6 @@
 package com.furui;
 
+import com.furui.constant.Status;
 import com.furui.domain.Customer;
 import com.furui.domain.LineItem;
 import com.furui.domain.Orders;
@@ -70,6 +71,9 @@ public class App {
             Customer customer = new Customer();
             customer.setC_custkey(Integer.parseInt(fields[0]));
             customer.setC_mktsegment(fields[6]);
+            if (fields.length == 9) {
+                customer.setStatus(Status.valueOf(fields[8]));
+            }
             return customer;
         }).filter(c -> SEGMENT.equals(c.getC_mktsegment())); // 过滤目标市场细分
 
@@ -84,7 +88,7 @@ public class App {
 
         DataStream<Orders> orderStream = env.fromSource(
                 orderFileSource,
-                WatermarkStrategy.noWatermarks(), // 批处理场景无需水印
+                WatermarkStrategy.noWatermarks(),
                 "OrderFileSource"
         ).map(line -> {
             String[] fields = line.split("\\|");
@@ -100,12 +104,16 @@ public class App {
         DataStream<Orders> filteredOrders = orderStream
                 .connect(broadcastCustomer)
                 .process(new BroadcastProcessFunction<Orders, Customer, Orders>() {
-                    // 处理orders流元素：检查客户是否在广播的目标市场细分中
+                    // 处理orders流元
                     @Override
                     public void processElement(Orders order, ReadOnlyContext ctx, Collector<Orders> out) throws Exception {
                         ReadOnlyBroadcastState<Integer, Customer> customerState = ctx.getBroadcastState(customerStateDesc);
                         // 如果客户存在且属于目标细分，保留订单
                         if (customerState.contains(order.getO_custkey())) {
+                            Customer current = customerState.get(order.getO_custkey());
+                            if (Status.DELETE == current.getStatus()) {
+                                order.setStatus(Status.DELETE);
+                            }
                             out.collect(order);
                         }
                     }
@@ -139,8 +147,6 @@ public class App {
                     private MapState<Integer, Orders> orderInfoState;
                     // 状态2：存储当前分组的累计收入（orderkey -> 累计值）
                     private MapState<Integer, Double> totalRevenueState;
-                    // 状态3：存储当前分组已处理的订单项数量（orderkey -> 计数）
-//                    private MapState<Long, Integer> itemCountState;
 
                     @Override
                     public void open(Configuration parameters) {
@@ -157,15 +163,26 @@ public class App {
                     public void processElement1(Orders order, Context ctx, Collector<RealTimeResult> out) throws Exception {
                         int orderkey = order.getO_orderkey();
                         orderInfoState.put(orderkey, order);
+//                        if (order.getStatus() == Status.DELETE) {
+//                            System.out.println("DELETE"+orderkey);
+//                        }
 
                         if (totalRevenueState.contains(orderkey)) {
                             double currentTotal = totalRevenueState.get(orderkey);
-                            out.collect(new RealTimeResult(
-                                    orderkey,
+                            RealTimeResult result = new RealTimeResult(true, orderkey,
                                     order.getO_orderdate(),
                                     order.getO_shippriority(),
-                                    currentTotal
-                            ));
+                                    currentTotal);
+
+                            /**
+                             * 这里处理的时候，删除不清零缓存中的数据
+                             */
+                            if (Status.DELETE == order.getStatus()) {
+                                result.setRevenue(0.0);
+                                result.setValid(false);
+//                                System.out.print("DELETE");
+                            }
+                            out.collect(result);
                         }
                     }
 
@@ -174,32 +191,53 @@ public class App {
                     public void processElement2(LineItem lineitem, Context ctx, Collector<RealTimeResult> out) throws Exception {
                         int orderkey = lineitem.getL_orderkey();
 
-                        // 1. 更新累计收入
+//                        if (orderkey == 5998051) {
+//                            System.out.println(orderkey);
+//                            System.out.println(orderInfoState.get(orderkey));
+//                        }
+
+                        // 当前收入
                         double itemRevenue = lineitem.getL_extendedprice() * (1 - lineitem.getL_discount());
 
                         double currentTotal = totalRevenueState.get(orderkey) == null ? 0.0 : totalRevenueState.get(orderkey);
-                        currentTotal += itemRevenue;
+                        if (Status.INSERT == lineitem.getStatus()) {
+                            currentTotal += itemRevenue;
+                        } else {
+                            currentTotal -= itemRevenue;
+                        }
+
+                        /**
+                         * 这里扣成负数也不清零，后面可以加回来
+                         */
                         totalRevenueState.put(orderkey, currentTotal);
 
-                        // 3. 关联订单属性（可能为null，若订单未到达）
+                        // 3. 关联订单属性
+                        // 如果暂时没有 等订单来了触发
                         if (orderInfoState.contains(orderkey)) {
                             Orders order = orderInfoState.get(orderkey);
                             String orderdate =  order.getO_orderdate();
                             int shippriority = order.getO_shippriority();
 
-                            out.collect(new RealTimeResult(
+                            RealTimeResult result = new RealTimeResult(true,
                                     orderkey,
                                     orderdate,
                                     shippriority,
-                                    currentTotal
-                            ));
+                                    currentTotal);
+
+                            if (currentTotal <= 0 || Status.DELETE == order.getStatus()) {
+                                result.setValid(false);
+                                //total 这里设置成负的也输出可以按照需求修改.
+                            }
+
+                            out.collect(result);
                         }
                     }
                 });
 
-        realTimeStream.print();
+        realTimeStream.filter(i -> !i.isValid()).print();
 
         env.execute("Customer FileSource Demo");
+        Thread.sleep(10000);
 
         System.out.println(System.currentTimeMillis()-start);
     }

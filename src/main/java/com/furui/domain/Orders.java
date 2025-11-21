@@ -1,5 +1,6 @@
 package com.furui.domain;
 
+import com.furui.constant.Status;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -20,4 +21,9 @@ public class Orders implements Serializable {
     private String o_clerk;
     private int o_shippriority;
     private String o_comment;
+
+    /**
+     * 默认insert
+     */
+    private Status status = Status.INSERT;
 }

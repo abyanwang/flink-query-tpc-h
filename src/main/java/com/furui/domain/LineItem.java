@@ -1,5 +1,6 @@
 package com.furui.domain;
 
+import com.furui.constant.Status;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -27,4 +28,10 @@ public class LineItem implements Serializable {
     private String l_shipinstruct;
     private String l_shipmode;
     private String l_comment;
+
+
+    /**
+     * 默认insert
+     */
+    private Status status = Status.INSERT;
 }
