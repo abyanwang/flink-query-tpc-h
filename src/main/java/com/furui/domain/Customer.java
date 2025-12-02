@@ -32,4 +32,16 @@ public class Customer implements Serializable {
      * 默认insert
      */
     private Status status = Status.INSERT;
+
+
+    public static Customer convert(String line) {
+        String[] fields = line.split("\\|");
+        Customer customer = new Customer();
+        customer.setC_custkey(Integer.parseInt(fields[0]));
+        customer.setC_mktsegment(fields[6]);
+        if (fields.length == 9) {
+            customer.setStatus(Status.valueOf(fields[8]));
+        }
+        return customer;
+    }
 }

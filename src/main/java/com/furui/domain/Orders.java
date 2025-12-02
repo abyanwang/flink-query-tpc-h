@@ -26,4 +26,14 @@ public class Orders implements Serializable {
      * 默认insert
      */
     private Status status = Status.INSERT;
+
+    public static Orders convert(String line) {
+        String[] fields = line.split("\\|");
+        Orders orders = new Orders();
+        orders.setO_orderkey(Integer.parseInt(fields[0]));
+        orders.setO_custkey(Integer.parseInt(fields[1]));
+        orders.setO_orderdate(fields[4]);
+        orders.setO_shippriority(Integer.parseInt(fields[7]));
+        return orders;
+    }
 }

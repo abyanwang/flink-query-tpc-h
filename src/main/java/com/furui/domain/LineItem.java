@@ -34,4 +34,14 @@ public class LineItem implements Serializable {
      * 默认insert
      */
     private Status status = Status.INSERT;
+
+    public static LineItem convert(String line) {
+        String[] fields = line.split("\\|");
+        LineItem lineitem = new LineItem();
+        lineitem.setL_orderkey(Integer.parseInt(fields[0]));
+        lineitem.setL_extendedprice(Double.parseDouble(fields[5]));
+        lineitem.setL_discount(Double.parseDouble(fields[6]));
+        lineitem.setL_shipdate(fields[10]);
+        return lineitem;
+    }
 }
