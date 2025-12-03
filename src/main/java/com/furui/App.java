@@ -6,6 +6,7 @@ import com.furui.domain.LineItem;
 import com.furui.domain.Orders;
 import com.furui.domain.RealTimeResult;
 import com.furui.processor.LineItemProcessor;
+import com.furui.processor.LineItemProcessorV2;
 import com.furui.processor.OrderProcessor;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.state.BroadcastState;
@@ -99,7 +100,7 @@ public class App {
         DataStream<RealTimeResult> realTimeStream = filteredOrders
                 .keyBy(Orders::getO_orderkey) // 按订单ID分组
                 .connect(lineitemStream.keyBy(LineItem::getL_orderkey))
-                .process(new LineItemProcessor());
+                .process(new LineItemProcessorV2());
 
         realTimeStream.filter(i -> !i.isValid()).print();
 

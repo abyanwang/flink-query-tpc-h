@@ -11,7 +11,7 @@ import org.apache.flink.util.Collector;
 
 public class OrderProcessor extends BroadcastProcessFunction<Orders, Customer, Orders> {
 
-    private MapStateDescriptor<Integer, Customer> customerStateDesc;
+    private final MapStateDescriptor<Integer, Customer> customerStateDesc;
 
     public OrderProcessor(MapStateDescriptor<Integer, Customer> descriptor) {
         this.customerStateDesc = descriptor;
