@@ -27,13 +27,15 @@ public class Orders implements Serializable {
      */
     private Status status = Status.INSERT;
 
-    public static Orders convert(String line) {
+    public static Msg<Orders> convert(String line) {
         String[] fields = line.split("\\|");
+        Msg<Orders> msg = new Msg<>();
         Orders orders = new Orders();
         orders.setO_orderkey(Integer.parseInt(fields[0]));
         orders.setO_custkey(Integer.parseInt(fields[1]));
         orders.setO_orderdate(fields[4]);
         orders.setO_shippriority(Integer.parseInt(fields[7]));
-        return orders;
+        msg.setData(orders);
+        return msg;
     }
 }

@@ -12,6 +12,9 @@ import java.util.Date;
 @AllArgsConstructor
 @NoArgsConstructor
 public class LineItem implements Serializable {
+    /**
+     * 关联键
+     */
     private int l_orderkey;
     private int l_linenumber;
     private int l_partkey;
@@ -35,13 +38,15 @@ public class LineItem implements Serializable {
      */
     private Status status = Status.INSERT;
 
-    public static LineItem convert(String line) {
+    public static Msg< LineItem> convert(String line) {
         String[] fields = line.split("\\|");
+        Msg<LineItem> msg = new Msg<>();
         LineItem lineitem = new LineItem();
         lineitem.setL_orderkey(Integer.parseInt(fields[0]));
         lineitem.setL_extendedprice(Double.parseDouble(fields[5]));
         lineitem.setL_discount(Double.parseDouble(fields[6]));
         lineitem.setL_shipdate(fields[10]);
-        return lineitem;
+        msg.setData(lineitem);
+        return msg;
     }
 }

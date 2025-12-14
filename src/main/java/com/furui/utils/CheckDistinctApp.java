@@ -29,14 +29,14 @@ public class CheckDistinctApp {
                 .build();
 
 
-        env.fromSource(
-                orderFileSource,
-                WatermarkStrategy.noWatermarks(),
-                "OrderFileSource"
-        ).map(Orders::convert) // 字符串转 Orders 实体（确保 convert 方法正确）
-                .keyBy(Orders::getO_orderkey) // 3. 按主键分组（关键：状态与主键绑定）
-                .process(new CountAndFilterDuplicate()) // 4. 统计次数并过滤重复
-                .print("重复数据"); // 输出结果
+//        env.fromSource(
+//                orderFileSource,
+//                WatermarkStrategy.noWatermarks(),
+//                "OrderFileSource"
+//        ).map(Orders::convert) // 字符串转 Orders 实体（确保 convert 方法正确）
+//                .keyBy(Orders::getO_orderkey) // 3. 按主键分组（关键：状态与主键绑定）
+//                .process(new CountAndFilterDuplicate()) // 4. 统计次数并过滤重复
+//                .print("重复数据"); // 输出结果
 
         env.execute("Filter Duplicate Primary Key");
 
