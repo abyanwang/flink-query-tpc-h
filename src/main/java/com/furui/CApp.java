@@ -52,7 +52,7 @@ public class CApp {
 
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-//        env.setParallelism(1);
+        env.setParallelism(1);
 
 //        loadFileToMemory("/Users/free/Projects/ipdata/customer.tbl", CUSTOMER_DATA);
 

@@ -16,6 +16,7 @@ import org.apache.flink.streaming.api.functions.co.CoProcessFunction;
 import org.apache.flink.util.Collector;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -57,6 +58,9 @@ public class LineItemProcessFunction extends CoProcessFunction<Msg<Orders>, Msg<
 
         if (Status.INSERT == ordersMsg.getStatus()) {
             holder.update(holder.value() == null ? 1 : holder.value()+1);
+            if (holder.value() > 1) {
+                log.error("holder = {} :{}", holder.value(), JSON.toJSONString(orders));
+            }
             attribute.update(ordersMsg.getData());
             if (holder.value() == 1) { // 避免多次，理论没有
 //                log.error(JSON.toJSONString(alive.value()));
@@ -75,10 +79,11 @@ public class LineItemProcessFunction extends CoProcessFunction<Msg<Orders>, Msg<
                 Set<LineItem> current = alive.value();
                 if (!CollectionUtils.isEmpty(current)) {
                     current.forEach(i -> {
-                        collector.collect(collect(ordersMsg.getData(), i, Status.DELETE, true));
+                        collector.collect(collect(ordersMsg.getData(), i, Status.DELETE, false));
                     });
                 }
             }
+            log.error("delete order : {}, {} ,{}", orders.getO_custkey(), orders.getO_orderkey(), holder.value());
         }
     }
 
@@ -105,6 +110,7 @@ public class LineItemProcessFunction extends CoProcessFunction<Msg<Orders>, Msg<
             if (holder.value() == 1 && current.contains(lineItem)) { //减少当前这个且得是live的
                 collector.collect(collect(attribute.value(), lineItem, Status.DELETE, false));
             }
+            log.error("delete element2 order:{}", JSON.toJSONString(lineItem));
             current.remove(lineItem);
         }
 
@@ -125,7 +131,7 @@ public class LineItemProcessFunction extends CoProcessFunction<Msg<Orders>, Msg<
             result.setL_orderkey(lineItem.getL_orderkey());
             result.setO_orderdate(orders.getO_orderdate());
             result.setO_shippriority(orders.getO_shippriority());
-            result.setRevenue(lineItem.getL_extendedprice() * (1 - lineItem.getL_discount()));
+            result.setRevenue(lineItem.cal());
             result.setValid(true);
 
             return Msg.<RealTimeResult>builder().status(Status.INSERT).data(result).build();
@@ -135,7 +141,7 @@ public class LineItemProcessFunction extends CoProcessFunction<Msg<Orders>, Msg<
                 result.setL_orderkey(lineItem.getL_orderkey());
                 result.setO_orderdate(orders.getO_orderdate());
                 result.setO_shippriority(orders.getO_shippriority());
-                result.setRevenue(0.0);
+                result.setRevenue(BigDecimal.ZERO);
                 result.setValid(false); //表示下游数据会进行删除
                 return Msg.<RealTimeResult>builder().status(Status.DELETE).data(result).build();
             } else {
@@ -143,7 +149,7 @@ public class LineItemProcessFunction extends CoProcessFunction<Msg<Orders>, Msg<
                 result.setL_orderkey(lineItem.getL_orderkey());
                 result.setO_orderdate(orders.getO_orderdate());
                 result.setO_shippriority(orders.getO_shippriority());
-                result.setRevenue(lineItem.getL_extendedprice() * (1 - lineItem.getL_discount()));
+                result.setRevenue(lineItem.cal());
                 result.setValid(true);
                 return Msg.<RealTimeResult>builder().status(Status.DELETE).data(result).build();
             }

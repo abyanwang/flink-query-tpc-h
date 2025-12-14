@@ -52,6 +52,7 @@ public class OrderProcessFunction extends CoProcessFunction<Msg<Customer>, Msg<O
                     current.forEach(i -> {
                         collector.collect(collect(i, Status.INSERT));
                     });
+//                    current.clear();
                 }
             }
         } else if(Status.DELETE == customerMsg.getStatus()) {
@@ -63,6 +64,7 @@ public class OrderProcessFunction extends CoProcessFunction<Msg<Customer>, Msg<O
                         collector.collect(collect(i, Status.DELETE));
                     });
                 }
+                log.error("delete {}", customer.getC_custkey());
             }
         }
 
@@ -85,16 +87,13 @@ public class OrderProcessFunction extends CoProcessFunction<Msg<Customer>, Msg<O
             current.add(orders);
 //            ordersMapState.put(orders.getO_custkey(), orders);
             if (null != holder.value() && holder.value() == 1) {
-                if (!CollectionUtils.isEmpty(current)) {
-                    current.forEach(i -> {
-                        collector.collect(collect(i, Status.INSERT));
-                    });
-                }
+                collector.collect(collect(orders, Status.INSERT));
             }
         } else if (Status.DELETE == ordersMsg.getStatus()) {
             if (holder.value() != null && holder.value() == 1 && current.contains(orders)) { //减少当前这个且得是live的
                 collector.collect(collect(orders, Status.DELETE));
             }
+            log.error("delete order : {}, {}", orders.getO_custkey(), orders.getO_orderkey());
             current.remove(orders);
         }
 

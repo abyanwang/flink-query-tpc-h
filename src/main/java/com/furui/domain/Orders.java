@@ -35,6 +35,9 @@ public class Orders implements Serializable {
         orders.setO_custkey(Integer.parseInt(fields[1]));
         orders.setO_orderdate(fields[4]);
         orders.setO_shippriority(Integer.parseInt(fields[7]));
+        if ("DELETE".equals(fields[fields.length-1])) {
+            msg.setStatus(Status.DELETE);
+        }
         msg.setData(orders);
         return msg;
     }
