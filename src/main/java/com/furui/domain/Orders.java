@@ -22,11 +22,6 @@ public class Orders implements Serializable {
     private int o_shippriority;
     private String o_comment;
 
-    /**
-     * 默认insert
-     */
-    private Status status = Status.INSERT;
-
     public static Msg<Orders> convert(String line) {
         String[] fields = line.split("\\|");
         Msg<Orders> msg = new Msg<>();

@@ -15,20 +15,16 @@ import org.apache.flink.connector.file.src.reader.TextLineInputFormat;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.sink.filesystem.rollingpolicies.DefaultRollingPolicy;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * ./dbgen -s 5 -f
+ * ./dbgen -s 2 -f
  * cd /usr/local/opt/apache-flink@1/libexec/bin
  * ./start-cluster.sh
- * ./flink run -c com.furui.App /Users/free/Projects/flink-query-tpc-h/target/flink-query-tpc-h-1.0-SNAPSHOT.jar
- *
+ * ./flink run -p 6 -c com.furui.CApp /Users/free/Projects/flink-query-tpc-h/target/flink-query-tpc-h-1.0-SNAPSHOT.jar
  * /usr/local/opt/apache-flink@1/libexec/conf
  * ./stop-cluster.sh
  */
@@ -40,56 +36,43 @@ public class CApp {
     private static List<String> CUSTOMER_DATA = new ArrayList<>();
     private static List<String> ORDER_DATA = new ArrayList<>();
 
-    private static void loadFileToMemory(String filePath, List<String> dataList) throws Exception {
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                dataList.add(line);
-            }
-        }
-    }
-
 
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.setParallelism(1);
+//        env.setParallelism(1);
 
 //        loadFileToMemory("/Users/free/Projects/ipdata/customer.tbl", CUSTOMER_DATA);
 
         long start = System.currentTimeMillis();
         FileSource<String> customerFileSource = FileSource
                 .forRecordStreamFormat(
-                        new TextLineInputFormat(), // 按行读取文本
-                        new Path("/Users/free/Projects/ipdatabig/customer.tbl")        // 文件路径
+                        new TextLineInputFormat(),
+                        new Path("/Users/free/Projects/ipdatabig/customer.tbl")
                 )
                 .build();
 
         FileSource<String> orderFileSource = FileSource
                 .forRecordStreamFormat(
-                        new TextLineInputFormat(), // 按行读取文本
-                        new Path("/Users/free/Projects/ipdatabig/orders.tbl")        // 文件路径
+                        new TextLineInputFormat(),
+                        new Path("/Users/free/Projects/ipdatabig/orders.tbl")
                 )
                 .build();
 
         FileSource<String> lineFileSource = FileSource
                 .forRecordStreamFormat(
-                        new TextLineInputFormat(), // 按行读取文本
-                        new Path("/Users/free/Projects/ipdatabig/lineitem.tbl")        // 文件路径
+                        new TextLineInputFormat(),
+                        new Path("/Users/free/Projects/ipdatabig/lineitem.tbl")
                 )
                 .build();
 
-        // 2. 从FileSource创建数据流，解析并过滤
-
         DataStream<Msg<Customer>> customerStream = env.fromSource(customerFileSource, WatermarkStrategy.noWatermarks(),
                 "CustomerSource").map(Customer::convert).filter(c -> SEGMENT.equals(c.getData().getC_mktsegment()));
-
-
 
         DataStream<Msg<Orders>> orderStream = env.fromSource(
                 orderFileSource,
                 WatermarkStrategy.noWatermarks(),
                 "OrderFileSource"
-        ).map(Orders::convert).filter(o -> DATE.compareTo(o.getData().getO_orderdate()) > 0); // 过滤目标市场细分
+        ).map(Orders::convert).filter(o -> DATE.compareTo(o.getData().getO_orderdate()) > 0);
 
         DataStream<Msg<Orders>> filteredOrders = customerStream.keyBy(customerMsg -> customerMsg.getData().getC_custkey())
                 .connect(orderStream.keyBy(ordersMsg -> ordersMsg.getData().getO_custkey()))
@@ -117,15 +100,8 @@ public class CApp {
 
         // 构建FileSink
         FileSink<String > fileSink = FileSink
-                // 1. 使用Flink内置的SimpleStringEncoder（解决getBytes()问题）
                 .forRowFormat(new Path(localOutputPath),
                         new SimpleStringEncoder<String>(StandardCharsets.UTF_8.name()) // 字符串编码为字节
-                )
-                // 2. 滚动策略（避免小文件）
-                .withRollingPolicy(
-                        DefaultRollingPolicy.builder()
-                                .withMaxPartSize(128 * 1024 * 1024) // 128MB
-                                .build()
                 )
                 .withBucketCheckInterval(1000)
                 .build();
@@ -133,7 +109,7 @@ public class CApp {
         aggResult.map(RealTimeResult::toString).sinkTo(fileSink).name("write");
 
 //        aggResult.filter(i -> i.getL_orderkey() == 47525L).print();
-        env.execute("Customer FileSource Demo");
+        env.execute("Customer FileSource");
 //        Thread.sleep(10000);
 
 

@@ -13,6 +13,9 @@ import java.io.Serializable;
 @NoArgsConstructor
 @Builder(access = lombok.AccessLevel.PUBLIC) // 关键：指定构建器为 PUBLIC
 public class Msg<T> implements Serializable {
+    /**
+     * 默认insert
+     */
     private Status status = Status.INSERT;
 
     private T data;

@@ -36,12 +36,6 @@ public class LineItem implements Serializable {
     private String l_shipmode;
     private String l_comment;
 
-
-    /**
-     * 默认insert
-     */
-    private Status status = Status.INSERT;
-
     public BigDecimal cal() {
         BigDecimal oneMinusDiscountBd = BigDecimal.ONE.subtract(this.l_discount);
 

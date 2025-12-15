@@ -15,6 +15,7 @@ public class RealTimeResult implements Serializable {
     /**
      * 是否是合法状态，如果customer 删除了，或者order 删除了，lineitem扣减小于0了
      */
+    @Deprecated
     private boolean isValid;
     /**
      * 分组键：订单ID

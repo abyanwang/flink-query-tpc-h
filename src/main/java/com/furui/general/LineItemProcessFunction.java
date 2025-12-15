@@ -5,8 +5,6 @@ import com.furui.constant.Status;
 import com.furui.domain.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.flink.api.common.state.MapState;
-import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.api.common.typeinfo.TypeHint;
@@ -23,7 +21,7 @@ import java.util.Set;
 @Slf4j
 public class LineItemProcessFunction extends CoProcessFunction<Msg<Orders>, Msg<LineItem>, Msg<RealTimeResult>> {
 
-    private ValueState<Set<LineItem>> alive;
+    private ValueState<Set<LineItem>> activeTuples;
 
     private ValueState<Integer> holder;
 
@@ -34,7 +32,7 @@ public class LineItemProcessFunction extends CoProcessFunction<Msg<Orders>, Msg<
     @Override
     public void open(Configuration parameters) throws Exception {
 
-        alive = getRuntimeContext().getState(new ValueStateDescriptor<Set<LineItem>>("LineItemProcessFunction.alive",
+        activeTuples = getRuntimeContext().getState(new ValueStateDescriptor<Set<LineItem>>("LineItemProcessFunction.activeTuples",
                 TypeInformation.of(new TypeHint<Set<LineItem>>() {
         })));
         holder = getRuntimeContext().getState(new ValueStateDescriptor<Integer>("LineItemProcessFunction.holder",
@@ -51,8 +49,8 @@ public class LineItemProcessFunction extends CoProcessFunction<Msg<Orders>, Msg<
         if (null == orders) {
             return;
         }
-        if (null == alive.value()) {
-            alive.update(new HashSet<>());
+        if (null == activeTuples.value()) {
+            activeTuples.update(new HashSet<>());
         }
 
 
@@ -64,7 +62,7 @@ public class LineItemProcessFunction extends CoProcessFunction<Msg<Orders>, Msg<
             attribute.update(ordersMsg.getData());
             if (holder.value() == 1) { // 避免多次，理论没有
 //                log.error(JSON.toJSONString(alive.value()));
-                Set<LineItem> current = alive.value();
+                Set<LineItem> current = activeTuples.value();
                 if (!CollectionUtils.isEmpty(current)) {
                     current.forEach(i -> {
                         collector.collect(collect(ordersMsg.getData(), i, Status.INSERT, true));
@@ -76,14 +74,14 @@ public class LineItemProcessFunction extends CoProcessFunction<Msg<Orders>, Msg<
             attribute.clear();
 
             if (holder.value() == 0) {
-                Set<LineItem> current = alive.value();
+                Set<LineItem> current = activeTuples.value();
                 if (!CollectionUtils.isEmpty(current)) {
                     current.forEach(i -> {
                         collector.collect(collect(ordersMsg.getData(), i, Status.DELETE, false));
                     });
                 }
             }
-            log.error("delete order : {}, {} ,{}", orders.getO_custkey(), orders.getO_orderkey(), holder.value());
+//            log.error("delete order : {}, {} ,{}", orders.getO_custkey(), orders.getO_orderkey(), holder.value());
         }
     }
 
@@ -94,11 +92,11 @@ public class LineItemProcessFunction extends CoProcessFunction<Msg<Orders>, Msg<
             return;
         }
 
-        if (null == alive.value()) {
-            alive.update(new HashSet<>());
+        if (null == activeTuples.value()) {
+            activeTuples.update(new HashSet<>());
         }
 
-        Set<LineItem> current = alive.value();
+        Set<LineItem> current = activeTuples.value();
 
         if (Status.INSERT == lineItemMsg.getStatus()) {
             current.add(lineItem);
@@ -110,7 +108,7 @@ public class LineItemProcessFunction extends CoProcessFunction<Msg<Orders>, Msg<
             if (holder.value() == 1 && current.contains(lineItem)) { //减少当前这个且得是live的
                 collector.collect(collect(attribute.value(), lineItem, Status.DELETE, false));
             }
-            log.error("delete element2 order:{}", JSON.toJSONString(lineItem));
+//            log.error("delete element2 order:{}", JSON.toJSONString(lineItem));
             current.remove(lineItem);
         }
 

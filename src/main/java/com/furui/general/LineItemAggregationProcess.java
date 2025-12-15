@@ -50,10 +50,10 @@ public class LineItemAggregationProcess extends KeyedProcessFunction<Long, Msg<R
                 collector.collect(delete(result));
             } else {
                 if (null != totalRevenueState.value()) {
-                    log.error("delete before element2 order:{} id :{}", totalRevenueState.value(), result.getL_orderkey());
+//                    log.error("delete before element2 order:{} id :{}", totalRevenueState.value(), result.getL_orderkey());
 
                     totalRevenueState.update(totalRevenueState.value().subtract(result.getRevenue())); //这里先不考虑扣减为0的事情，如果需要可以添加
-                    log.error("delete element2 order:{} id :{}", totalRevenueState.value(), result.getL_orderkey());
+//                    log.error("delete element2 order:{} id :{}", totalRevenueState.value(), result.getL_orderkey());
 
                     collector.collect(collect(result, totalRevenueState.value()));
                 } else {

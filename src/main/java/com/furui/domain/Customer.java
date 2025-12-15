@@ -28,11 +28,6 @@ public class Customer implements Serializable {
     private String c_mktsegment;
     private String c_comment;
 
-    /**
-     * 默认insert
-     */
-    private Status status = Status.INSERT;
-
 
     public static Msg<Customer> convert(String line) {
         String[] fields = line.split("\\|");
